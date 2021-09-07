@@ -1,6 +1,6 @@
 # bimbu
 This is the main scripts for Syllables spotting
-#Installation
+# Installation
 After having cloned the project run:
 
 ```bash
