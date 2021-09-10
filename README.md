@@ -9,6 +9,7 @@ make install
 This will download and install allosaurus which is the main tool used for terms spotting and download the model in Kunwinjku
 
 # On Windows
+Python 3.6 is needed
 Install pip. pip is used to install python librairies
 then you can install the main dependencies:
 ```bash
@@ -29,3 +30,9 @@ and run the following command to unpack the model
 ```bash
 python -m allosaurus.bin.download_model
 ```
+To generate the syllable for a given audio file, run
+```bash
+python transcribe.py <path to your audio>
+```
+this will generate a json file with inside the syllable spotted for the given audio file
+If the audio is two long, it will automatically be broken down into smaller units into the folder splits
