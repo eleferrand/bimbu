@@ -13,9 +13,9 @@ Python 3.6 is needed
 Install pip. pip is used to install python librairies
 then you can install the main dependencies:
 ```bash
-pip install praatio
-pip install pydub
-pip install auditok
+py -m pip install praatio
+py -mpip install pydub
+py -m pip install auditok
 ```
 After that you need to clone Allosaurus project:
 ```bash
