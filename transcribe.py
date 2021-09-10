@@ -5,8 +5,7 @@ import _pickle as pickle
 import json
 from pydub import AudioSegment
 from auditok import split, AudioRegion
-import scipy.io.wavfile as wav
-import Levenshtein
+from lex_Trie import MyTrie
 
 letters = re.compile(r"(rdd|rl|nj|ng|rr|dj|y|rd|rn|kk|k|h|l|m|b|d|n|w|r|a|e|i|o|u)")
 def get_syll(insent):
@@ -49,8 +48,25 @@ def get_syll(insent):
     out_str = ""
 
     return(sylls)
-
-
+def process_topk(topk):
+    first = topk.split("|")
+    second = []
+    for elt in first:
+        ls = elt.split()
+        score1 = ls[1].replace("(", "")
+        score1 = score1.replace(")", "")
+        score2 = ls[3].replace("(", "")
+        score2 = score2.replace(")", "")
+        second.append([(ls[0], float(score1)),(ls[2], float(score2))])
+    top1 = ' '.join(x[0][0] for x in second)
+    return top1, second
+def to_graph(mot):
+    pairs = {"k": "kk", "kk": "k", "d": "rd", "rd": "d", "n" : "rn", "rn" : "n", "l" : "rr", "rr" : "l"}
+    p2g = {"a" : "a", "b" : "b" ,"d" : "d", "ɛ" : "e", "ʔ": "h","v" : "v", "i" :"i", "ɑ" : "a" ,"ʃ" : "ch", " " : " ","h" : "h", "j": "y","o":"o", "f": "f", "k": "k", " " : " "
+    ,"l":"l", "m": "m", "n":"n", "ɟ" : "dj", "ɔ" : "o", "s" : "s", "ɹ": "r","ɻ" : "r", "æ":"e", "ŋ": "ng", "ʈ" : "rd","ɖ" : "rd", "ɳ" : "rn", "ɭ" : "rl","r": "rr", "ɲ": "nj", "u": "u", "w":"w", "\n": "", 
+    "p": "p", "t":"d", "$" : "tch"} 
+    out = ''.join(p2g[l] for l in mot)
+    return out
 def main(wav_fn):
     with open("sylls.json", mode="r", encoding="utf-8") as jfile:
         json_sylls = set(json.load(jfile))
@@ -65,6 +81,7 @@ def main(wav_fn):
     full = AudioSegment.from_wav(wav_fn)
     cpt=0
     out_dic = {}
+    LEX = MyTrie()
     if not os.path.isdir("splits"):
         os.mkdir("splits")
     for r, reg in enumerate(region):
@@ -74,28 +91,15 @@ def main(wav_fn):
         sub.export("splits/"+out_name, format="wav")
 
         model = read_recognizer("big_kun")
-        output = model.recognize("splits/"+out_name)
-        print(output)
+        raw = model.recognize("splits/"+out_name, topk=2)
+        print(raw)
+        top1, confnet = process_topk(raw)
 
-        graphs = "".join(p2g[x] for x in output).replace(" ", "")
-        print(graphs)
-        segs = set(get_syll(graphs))
-        final = []
-        for s in segs:
-            if s in json_sylls:
-                final.append(s)
-                let = re.findall(letters, s)
 
-                closest = [(x, Levenshtein.ratio(s,x))for x in json_sylls]
-                closest = sorted(closest, key= lambda x : x[1], reverse=True)
-                if len(segs)<=4:
-                    final.append(closest[1][0])
-
-            else:
-                closest = [(x, Levenshtein.ratio(s,x))for x in json_sylls]
-                closest = sorted(closest, key= lambda x : x[1], reverse=True)
-
-                final.append(closest[0][0])
+        altern,_ = LEX.valid_words(confnet, verbose=False)
+        cand = set([x[0] for x in altern if x[1]>0.5])
+        final = [to_graph(x) for x in cand]
+        print(final)
         if len(final)>2:
             out_dic[out_name] = {"syllables" : final, 
             "start" : reg.meta.start, "end" : reg.meta.end, "transcription" : ""}
